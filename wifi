@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+
+
+IP_ADDR="192.168.1.72/24"
+BRIDGE_INTERFACE="br0"
+
+WLAN_INTERFACE=wlan1
+ETH_INTERFACE=eth0
+
+HOSTAPD_CONF="/etc/hostapd/hostapd.conf"
+
+CMD=$1
+
+log()
+{
+	echo -en "\033[37;1;41m [log] \033[0m" "$@"
+	echo
+}
+
+start_bridge()
+{
+	brctl addbr ${BRIDGE_INTERFACE} 
+
+	brctl addif ${BRIDGE_INTERFACE} ${ETH_INTERFACE}
+	brctl addif ${BRIDGE_INTERFACE} ${WLAN_INTERFACE} 
+
+	ip addr flush dev ${WLAN_INTERFACE}
+	ip addr flush dev ${ETH_INTERFACE}
+
+	ip addr add ${IP_ADDR} dev ${BRIDGE_INTERFACE} 
+
+	ip link set dev ${BRIDGE_INTERFACE} up
+}
+
+
+start_hostapd()
+{
+	hostapd -B ${HOSTAPD_CONF}
+}
+
+stop_bridge()
+{
+	ip link set ${BRIDGE_INTERFACE} down
+	brctl delif ${BRIDGE_INTERFACE} ${WLAN_INTERFACE}
+	brctl delif ${BRIDGE_INTERFACE} ${ETH_INTERFACE}
+	brctl delbr ${BRIDGE_INTERFACE}
+
+	ip addr add ${IP_ADDR} dev ${ETH_INTERFACE} 
+
+}
+
+stop_hostapd()
+{
+	killall hostapd 2>/dev/null >/dev/null
+	ip link set dev ${WLAN_INTERFACE} down
+}
+
+
+print_help()
+{
+	echo "Error param"
+	echo -en "\033[37;1;41m Help: \033[0m" "$@"
+	echo ""
+	echo -en "\033[37;1;41m $0 <start or stop> \033[0m"
+	echo ""
+}
+
+
+if [ -z "$CMD" ]
+then
+	print_help
+	exit 1
+fi
+
+case "$CMD" in
+	"start") 
+		log "start hostapd"
+		start_hostapd
+		log "start bridge"
+		start_bridge
+		log "success"
+		;;
+	"stop") 
+		log "stop bridge"
+		stop_bridge
+		log "stop hostapd"
+		stop_hostapd
+		;;
+	*)
+		print_help
+		;;
+esac
