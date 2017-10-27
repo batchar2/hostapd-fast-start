@@ -35,7 +35,13 @@ start_bridge()
 
 start_hostapd()
 {
+	sleep 1
+	sudo ifdown ${WLAN_INTERFACE}
+	sleep 2
+	sudo ifup ${WLAN_INTERFACE}
+	sleep 2
 	hostapd -B ${HOSTAPD_CONF}
+	sleep 2
 }
 
 stop_bridge()
